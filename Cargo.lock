@@ -1429,6 +1429,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "eth2"
+version = "0.1.0"
+dependencies = [
+ "hex 0.4.2",
+ "reqwest",
+ "serde",
+ "types",
+]
+
+[[package]]
 name = "eth2_config"
 version = "0.2.0"
 dependencies = [
@@ -2284,8 +2294,8 @@ name = "http_api"
 version = "0.1.0"
 dependencies = [
  "beacon_chain",
+ "eth2",
  "hex 0.4.2",
- "http_api_common",
  "parking_lot 0.11.0",
  "serde",
  "tokio 0.2.22",
