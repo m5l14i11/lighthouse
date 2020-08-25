@@ -499,16 +499,39 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map(|v| v.clone_with_only_committee_caches())
     }
 
+    /// Returns the beacon block at the head of the canonical chain.
+    ///
+    /// See `Self::head` for more information.
+    pub fn head_beacon_block(&self) -> Result<SignedBeaconBlock<T::EthSpec>, Error> {
+        self.map_head(|s| s.beacon_block.clone())
+    }
+
+    /// Returns the beacon state at the head of the canonical chain.
+    ///
+    /// See `Self::head` for more information.
+    pub fn head_beacon_state(&self) -> Result<BeaconState<T::EthSpec>, Error> {
+        self.map_head(|s| s.beacon_state.clone())
+    }
+
+    /// Maps a function across the provided `func`.
+    ///
+    /// The read-lock on the head will be held for the entirety of `func`, care should be taken not
+    /// to hog this log and cause contention with other parts of the application.
+    pub fn map_head<F, U>(&self, func: F) -> Result<U, Error>
+    where
+        F: Fn(&BeaconSnapshot<T::EthSpec>) -> U,
+    {
+        self.canonical_head
+            .try_read_for(HEAD_LOCK_TIMEOUT)
+            .ok_or_else(|| Error::CanonicalHeadLockTimeout)
+            .map(|snapshot| func(&snapshot))
+    }
+
     /// Returns info representing the head block and state.
     ///
     /// A summarized version of `Self::head` that involves less cloning.
     pub fn head_info(&self) -> Result<HeadInfo, Error> {
-        let head = self
-            .canonical_head
-            .try_read_for(HEAD_LOCK_TIMEOUT)
-            .ok_or_else(|| Error::CanonicalHeadLockTimeout)?;
-
-        Ok(HeadInfo {
+        self.map_head(|head| HeadInfo {
             slot: head.beacon_block.slot(),
             block_root: head.beacon_block_root,
             state_root: head.beacon_state_root,

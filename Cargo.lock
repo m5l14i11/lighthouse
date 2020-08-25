@@ -2,7 +2,7 @@
 # It is not intended for manual editing.
 [[package]]
 name = "account_manager"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "account_utils",
  "bls",
@@ -373,7 +373,7 @@ dependencies = [
 
 [[package]]
 name = "beacon_node"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "beacon_chain",
  "clap",
@@ -530,7 +530,7 @@ dependencies = [
 
 [[package]]
 name = "boot_node"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "beacon_node",
  "clap",
@@ -2285,11 +2285,21 @@ version = "0.1.0"
 dependencies = [
  "beacon_chain",
  "hex 0.4.2",
+ "http_api_common",
  "parking_lot 0.11.0",
  "serde",
  "tokio 0.2.22",
  "types",
  "warp",
+]
+
+[[package]]
+name = "http_api_common"
+version = "0.1.0"
+dependencies = [
+ "hex 0.4.2",
+ "serde",
+ "types",
 ]
 
 [[package]]
@@ -2595,7 +2605,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "lcli"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "bls",
  "clap",
@@ -2952,7 +2962,7 @@ dependencies = [
 
 [[package]]
 name = "lighthouse"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "account_manager",
  "account_utils",
@@ -6323,7 +6333,7 @@ dependencies = [
 
 [[package]]
 name = "validator_client"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "account_utils",
  "bls",
