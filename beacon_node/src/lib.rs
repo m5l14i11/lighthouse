@@ -19,8 +19,10 @@ use beacon_chain::{
 use clap::ArgMatches;
 use config::get_config;
 use environment::RuntimeContext;
+use slasher::Slasher;
 use slog::{info, warn};
 use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 use types::EthSpec;
 
 /// A type-alias to the tighten the definition of a production-intended `Client`.
@@ -90,6 +92,16 @@ impl<E: EthSpec> ProductionBeaconNode<E> {
             .disk_store(&db_path, &freezer_db_path_res?, store_config)?
             .background_migrator()?;
 
+        let builder = if let Some(slasher_config) = client_config.slasher.clone() {
+            let slasher = Arc::new(
+                Slasher::open(slasher_config, log.new(slog::o!("service" => "slasher")))
+                    .map_err(|e| format!("Slasher open error: {:?}", e))?,
+            );
+            builder.slasher(slasher)
+        } else {
+            builder
+        };
+
         let builder = builder
             .beacon_chain_builder(client_genesis, client_config_1)
             .await?;
@@ -132,6 +144,12 @@ impl<E: EthSpec> ProductionBeaconNode<E> {
 
         let builder = if client_config.rest_api.enabled {
             builder.http_server(&client_config, &http_eth2_config, events)?
+        } else {
+            builder
+        };
+
+        let builder = if client_config.slasher.is_some() {
+            builder.slasher_server()?
         } else {
             builder
         };

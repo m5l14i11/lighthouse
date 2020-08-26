@@ -18,6 +18,8 @@ use eth2_libp2p::NetworkGlobals;
 use genesis::{interop_genesis_state, Eth1GenesisService};
 use network::{NetworkConfig, NetworkMessage, NetworkService};
 use parking_lot::Mutex;
+use slasher::Slasher;
+use slasher::SlasherServer;
 use slog::info;
 use ssz::Decode;
 use std::net::SocketAddr;
@@ -63,6 +65,7 @@ pub struct ClientBuilder<T: BeaconChainTypes> {
     network_send: Option<UnboundedSender<NetworkMessage<T::EthSpec>>>,
     http_listen_addr: Option<SocketAddr>,
     websocket_listen_addr: Option<SocketAddr>,
+    slasher: Option<Arc<Slasher<T::EthSpec>>>,
     eth_spec_instance: T::EthSpec,
 }
 
@@ -105,6 +108,7 @@ where
             network_send: None,
             http_listen_addr: None,
             websocket_listen_addr: None,
+            slasher: None,
             eth_spec_instance,
         }
     }
@@ -118,6 +122,11 @@ where
     /// Specifies the `ChainSpec`.
     pub fn chain_spec(mut self, spec: ChainSpec) -> Self {
         self.chain_spec = Some(spec);
+        self
+    }
+
+    pub fn slasher(mut self, slasher: Arc<Slasher<TEthSpec>>) -> Self {
+        self.slasher = Some(slasher);
         self
     }
 
@@ -157,6 +166,12 @@ where
             .chain_config(chain_config)
             .disabled_forks(disabled_forks)
             .graffiti(graffiti);
+
+        let builder = if let Some(slasher) = self.slasher.clone() {
+            builder.slasher(slasher)
+        } else {
+            builder
+        };
 
         let chain_exists = builder
             .store_contains_beacon_chain()
@@ -328,6 +343,24 @@ where
 
         self.http_listen_addr = Some(listening_addr);
 
+        Ok(self)
+    }
+
+    pub fn slasher_server(self) -> Result<Self, String> {
+        let context = self
+            .runtime_context
+            .as_ref()
+            .ok_or_else(|| "slasher requires a runtime_context")?
+            .service_context("slasher_server_ctxt".into());
+        let slasher = self
+            .slasher
+            .clone()
+            .ok_or_else(|| "slasher server requires a slasher")?;
+        let slot_clock = self
+            .slot_clock
+            .clone()
+            .ok_or_else(|| "slasher server requires a slot clock")?;
+        SlasherServer::new(slasher, slot_clock, &context.executor);
         Ok(self)
     }
 
