@@ -360,7 +360,7 @@ where
             .slot_clock
             .clone()
             .ok_or_else(|| "slasher server requires a slot clock")?;
-        SlasherServer::new(slasher, slot_clock, &context.executor);
+        SlasherServer::run(slasher, slot_clock, &context.executor);
         Ok(self)
     }
 
