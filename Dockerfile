@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 RUN groupadd -r lighthouse && useradd --no-log-init -r -g lighthouse lighthouse 
+RUN chown -R lighthouse /home/.lighthouse
 USER lighthouse
 COPY --from=builder /usr/local/cargo/bin/lighthouse /usr/local/bin/lighthouse
 COPY --from=builder /usr/local/cargo/bin/lcli /usr/local/bin/lcli
