@@ -2299,6 +2299,7 @@ dependencies = [
  "hex 0.4.2",
  "parking_lot 0.11.0",
  "serde",
+ "slog",
  "store",
  "tokio 0.2.22",
  "types",
