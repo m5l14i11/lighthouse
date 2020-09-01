@@ -2295,6 +2295,7 @@ name = "http_api"
 version = "0.1.0"
 dependencies = [
  "beacon_chain",
+ "environment",
  "eth2",
  "hex 0.4.2",
  "parking_lot 0.11.0",
