@@ -301,19 +301,49 @@ where
             .map(T::from)
             .map_err(serde::de::Error::custom)
     }
+
+    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        if self.require_quotes {
+            Err(serde::de::Error::custom(
+                "received unquoted integer when quotes are required",
+            ))
+        } else {
+            Ok(T::from(v))
+        }
+    }
+}
+
+/// Wrapper type for requiring quotes on a `u64`-like type.
+///
+/// Unlike using `serde(with = "only_quoted")` this is composable, and can be nested inside
+/// types like `Option`, `Result` and `Vec`.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde_derive::Deserialize, serde_derive::Serialize,
+)]
+#[serde(transparent)]
+pub struct Quoted<T>
+where
+    T: From<u64> + Into<u64> + Copy,
+{
+    #[serde(with = "only_quoted")]
+    pub value: T,
+}
+
+pub fn serialize_quoted<S, T>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    T: From<u64> + Into<u64> + Copy,
+{
+    let v: u64 = (*value).into();
+    serializer.serialize_str(&format!("{}", v))
 }
 
 pub mod quoted {
+    pub use super::serialize_quoted as serialize;
     use super::*;
-
-    pub fn serialize<S, T>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-        T: From<u64> + Into<u64> + Copy,
-    {
-        let v: u64 = (*value).into();
-        serializer.serialize_str(&format!("{}", v))
-    }
 
     pub fn deserialize<'de, D, T>(deserializer: D) -> Result<T, D::Error>
     where
@@ -328,16 +358,8 @@ pub mod quoted {
 }
 
 pub mod only_quoted {
+    pub use super::serialize_quoted as serialize;
     use super::*;
-
-    pub fn serialize<S, T>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-        T: From<u64> + Into<u64> + Copy,
-    {
-        let v: u64 = (*value).into();
-        serializer.serialize_str(&format!("{}", v))
-    }
 
     pub fn deserialize<'de, D, T>(deserializer: D) -> Result<T, D::Error>
     where
@@ -386,7 +408,7 @@ pub mod quoted_u64_vec {
         }
     }
 
-    pub fn serialize<S>(value: &Vec<u64>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(value: &[u64], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
