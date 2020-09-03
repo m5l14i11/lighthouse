@@ -1,5 +1,6 @@
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serializer};
+use std::marker::PhantomData;
 
 pub const FORK_BYTES_LEN: usize = 4;
 pub const GRAFFITI_BYTES_LEN: usize = 32;
@@ -270,42 +271,83 @@ pub mod graffiti {
     }
 }
 
+/// Serde support for deserializing quoted integers.
+///
+/// Configurable so that quotes are either required or optional.
+pub struct QuotedIntVisitor<T> {
+    require_quotes: bool,
+    _phantom: PhantomData<T>,
+}
+
+impl<'a, T> serde::de::Visitor<'a> for QuotedIntVisitor<T>
+where
+    T: From<u64> + Into<u64> + Copy,
+{
+    type Value = T;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.require_quotes {
+            write!(formatter, "a quoted integer")
+        } else {
+            write!(formatter, "a quoted or unquoted integer")
+        }
+    }
+
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        s.parse::<u64>()
+            .map(T::from)
+            .map_err(serde::de::Error::custom)
+    }
+}
+
 pub mod quoted {
     use super::*;
 
-    pub struct QuotedIntVisitor;
-    impl<'a> serde::de::Visitor<'a> for QuotedIntVisitor {
-        type Value = u64;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            write!(formatter, "a quoted or unquoted integer")
-        }
-
-        fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            let s = if s.len() > 2 && s.starts_with("\"") && s.ends_with("\"") {
-                &s[1..s.len() - 1]
-            } else {
-                s
-            };
-            s.parse().map_err(serde::de::Error::custom)
-        }
-    }
-
-    pub fn serialize<S>(value: &u64, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S, T>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
+        T: From<u64> + Into<u64> + Copy,
     {
-        serializer.serialize_str(&format!("{}", value))
+        let v: u64 = (*value).into();
+        serializer.serialize_str(&format!("{}", v))
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<u64, D::Error>
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<T, D::Error>
     where
         D: Deserializer<'de>,
+        T: From<u64> + Into<u64> + Copy,
     {
-        deserializer.deserialize_any(QuotedIntVisitor)
+        deserializer.deserialize_any(QuotedIntVisitor {
+            require_quotes: false,
+            _phantom: PhantomData,
+        })
+    }
+}
+
+pub mod only_quoted {
+    use super::*;
+
+    pub fn serialize<S, T>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        T: From<u64> + Into<u64> + Copy,
+    {
+        let v: u64 = (*value).into();
+        serializer.serialize_str(&format!("{}", v))
+    }
+
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+        T: From<u64> + Into<u64> + Copy,
+    {
+        deserializer.deserialize_any(QuotedIntVisitor {
+            require_quotes: true,
+            _phantom: PhantomData,
+        })
     }
 }
 
